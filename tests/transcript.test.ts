@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { cleanSummary } from "../src/lib/llm";
 import { buildTranscript, type SourceMessage } from "../src/lib/transcript";
 
 const base = Date.UTC(2026, 9, 5, 14, 0);
@@ -46,4 +47,9 @@ test("duplicate display names get unique aliases", () => {
   const t = buildTranscript([msg("1", "Sam", 0, "a"), msg("2", "sam", 30, "b")], { maxChars: 1000 });
   expect(t.text).toContain("Sam: a");
   expect(t.text).toContain("sam2: b");
+});
+
+test("cleanSummary strips echoed day markers but keeps headings", () => {
+  expect(cleanSummary("#2026-10-05\n\n**Topic**\n- a\n\n## 2026-10-06\n\n\n- b")).toBe("**Topic**\n- a\n\n- b");
+  expect(cleanSummary("## Plans for 2026-10-05\n- x")).toBe("## Plans for 2026-10-05\n- x");
 });

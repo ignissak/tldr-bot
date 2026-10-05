@@ -83,3 +83,14 @@ test("LLM errors expose Google's message but redact the key", () => {
   expect(toLlmError(new ApiError({ message: invalid, status: 400 })).userMessage).toContain("invalid");
   expect(toLlmError(new ApiError({ message: "x", status: 429 })).userMessage).toContain("quota");
 });
+
+test("cost estimate uses dated per-model prices", async () => {
+  const { estimateCost, formatUsd } = await import("../src/models");
+  // 470 in / 196 out on 3.1-flash-lite: 470*0.25/1e6 + 196*1.5/1e6
+  expect(estimateCost("gemini-3.1-flash-lite", 470, 196)).toBeCloseTo(0.0004115, 10);
+  expect(formatUsd(estimateCost("gemini-3.1-flash-lite", 470, 196))).toBe("$0.00041");
+  const before = Date.UTC(2026, 11, 31), after = Date.UTC(2027, 0, 1);
+  expect(estimateCost("gemini-3.8-flash", 1_000_000, 0, before)).toBe(0.75);
+  expect(estimateCost("gemini-3.8-flash", 1_000_000, 0, after)).toBe(1.5);
+  expect(formatUsd(1.23456)).toBe("$1.2346");
+});

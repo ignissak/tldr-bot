@@ -12,6 +12,7 @@ import { fetchRange } from "../lib/fetch-messages";
 import { Limiter } from "../lib/limits";
 import { formatLlmError, LlmError, summarize } from "../lib/llm";
 import { buildTranscript } from "../lib/transcript";
+import { estimateCost, formatUsd } from "../models";
 import { everywhere } from "./scope";
 import type { Command, Context } from "./types";
 
@@ -172,7 +173,10 @@ async function run(i: ChatInputCommandInteraction, { env }: Context, a: RunArgs)
   const omitted = transcript.dropped + (fetched.capped ? 1 : 0) > 0
     ? " · ⚠️ limit reached, only newest messages used"
     : "";
-  const tokens = summary.inputTokens ? ` · ${summary.inputTokens}→${summary.outputTokens ?? "?"} tokens` : "";
+  const { inputTokens: inTok, outputTokens: outTok } = summary;
+  const tokens = inTok !== undefined && outTok !== undefined
+    ? ` · ${inTok}→${outTok} tokens · ≈${formatUsd(estimateCost(a.model, inTok, outTok))} (free tier: $0)`
+    : "";
   const who = a.authors.size ? ` · from ${[...a.authors].map((id) => `<@${id}>`).join(" ")}` : "";
 
   await i.editReply({

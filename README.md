@@ -39,11 +39,16 @@ Settings belong to the **user**, not the server: your key and model follow you e
 
 ### Docker
 
+The image is built by GitHub Actions (`.github/workflows/docker.yml`) and published to `ghcr.io/ignissak/tldr-bot`, for linux/amd64 and linux/arm64.
+Tags: `latest` comes from `main`, `X.Y.Z` / `X.Y` from `vX.Y.Z` git tags, and `sha-<short>` is added for every build. Pull requests only build the image; they don't publish it.
+
 ```sh
-docker compose build
+docker compose pull
 docker compose run --rm bot bun run deploy   # register slash commands once
 docker compose up -d
 ```
+
+To update: `docker compose pull && docker compose up -d`. To build locally instead, run `docker build -t ghcr.io/ignissak/tldr-bot:latest .`.
 
 The SQLite DB lives in the `bot-data` volume. The container runs as a non-root user with a read-only root filesystem, no Linux capabilities, and `no-new-privileges`.
 
@@ -57,6 +62,7 @@ The Gemini API has no per-request "free" switch. The **API key's Google Cloud pr
 
 - Create the key at https://aistudio.google.com/apikey in a project **without billing enabled**. All calls then run on the **free tier**, with no charges and lower rate limits.
 - The bot is built to stay inside free-tier limits. It makes one `generateContent` call per `/tldr`, uses the default service tier, and uses no paid-only features (no context caching, batch, or priority tier). Thinking is set to `MINIMAL`. If you hit a rate limit (HTTP 429), the bot shows a friendly message instead of retrying in a loop.
+- The summary footer shows the token counts and an **estimated cost at the paid-tier rate**. The API only returns token counts, so the bot calculates the cost from the price table in `src/models.ts`. On the free tier the actual cost is $0. Update the table when Google changes its prices.
 - ⚠️ On the free tier, Google may use prompts to improve its products. Those prompts are the chat messages being summarized. Tell your community, or use a billed key if that is a concern.
 
 ## Keeping LLM input small

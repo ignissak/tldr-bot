@@ -5,6 +5,8 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production --ignore-scripts
 
 FROM oven/bun:1.3-slim
+# Links the ghcr.io package to the repo (visibility/permissions inherit from it).
+LABEL org.opencontainers.image.source=https://github.com/ignissak/tldr-bot
 WORKDIR /app
 ENV NODE_ENV=production \
     DATABASE_PATH=/app/data/bot.db

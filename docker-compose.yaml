@@ -1,7 +1,6 @@
 services:
   bot:
-    build: .
-    image: tldr-discord-bot
+    image: ghcr.io/ignissak/tldr-bot:latest
     restart: unless-stopped
     env_file: .env
     environment:
