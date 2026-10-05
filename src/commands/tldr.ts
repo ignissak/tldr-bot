@@ -7,7 +7,7 @@ import {
   type ChatInputCommandInteraction,
   type TextBasedChannel,
 } from "discord.js";
-import { discordTs, parseDate } from "../lib/dates";
+import { discordTs, linkChannelId, parseDate } from "../lib/dates";
 import { fetchRange } from "../lib/fetch-messages";
 import { Limiter } from "../lib/limits";
 import { formatLlmError, LlmError, summarize } from "../lib/llm";
@@ -15,7 +15,9 @@ import { buildTranscript } from "../lib/transcript";
 import { everywhere } from "./scope";
 import type { Command, Context } from "./types";
 
-const DATE_HELP = "your /timezone, e.g. 2026-10-05, 2026-10-05 14:30, 05.10.2026, 6h, 2d, yesterday";
+const DATE_HELP =
+  "2026-10-05, 2026-10-05 14:30, 05.10.2026, 6h, 2d, yesterday (in your /timezone), a message ID or a message link";
+const OPTION_HELP = "date/time, 6h, 2d, message ID or link";
 const MAX_AUTHORS = 25;
 const PROGRESS_INTERVAL_MS = 2000;
 const REQUIRED_PERMS = PermissionFlagsBits.ViewChannel | PermissionFlagsBits.ReadMessageHistory;
@@ -26,8 +28,8 @@ const builder = everywhere(new SlashCommandBuilder())
   .setName("tldr")
   .setDescription("Summarize this channel's messages in a time range");
 builder
-  .addStringOption((o) => o.setName("start_date").setDescription(`From (${DATE_HELP})`).setRequired(true).setMaxLength(40))
-  .addStringOption((o) => o.setName("end_date").setDescription(`To, default now (${DATE_HELP})`).setMaxLength(40))
+  .addStringOption((o) => o.setName("start_date").setDescription(`From: ${OPTION_HELP}`).setRequired(true).setMaxLength(120))
+  .addStringOption((o) => o.setName("end_date").setDescription(`To, default now: ${OPTION_HELP}`).setMaxLength(120))
   .addStringOption((o) => o.setName("users").setDescription("Only these users: @mention one or more").setMaxLength(1500))
   .addBooleanOption((o) => o.setName("private").setDescription("Only you see the summary (default: false)"));
 
@@ -72,8 +74,16 @@ export const tldr: Command = {
     const { apiKey, model, timeZone: userTz } = ctx.store.get(interaction.user.id);
     const timeZone = userTz ?? ctx.env.DEFAULT_TIMEZONE;
     const now = Date.now();
-    const start = parseDate(interaction.options.getString("start_date", true), { now, timeZone });
+    const startRaw = interaction.options.getString("start_date", true);
     const endRaw = interaction.options.getString("end_date");
+    const foreign = [startRaw, endRaw].find((r) => r && (linkChannelId(r) ?? interaction.channelId) !== interaction.channelId);
+    if (foreign) {
+      return void (await interaction.reply({
+        content: "❌ That message link points to a different channel. Run /tldr in the linked message's channel.",
+        flags: MessageFlags.Ephemeral,
+      }));
+    }
+    const start = parseDate(startRaw, { now, timeZone });
     const parsedEnd = endRaw ? parseDate(endRaw, { now, timeZone, endOfDay: true }) : new Date(now);
     const fail = (content: string) => interaction.reply({ content: `❌ ${content}`, flags: MessageFlags.Ephemeral });
 

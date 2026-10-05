@@ -43,6 +43,20 @@ function fromWallClock(wall: number, tz: string): number {
   return ts;
 }
 
+const DISCORD_EPOCH = 1_420_070_400_000;
+const LINK_RE = /^<?https?:\/\/(?:\w+\.)?discord(?:app)?\.com\/channels\/(?:\d+|@me)\/(\d{17,20})\/(\d{17,20})\/?>?$/;
+const SNOWFLAKE_RE = /^\d{17,20}$/;
+
+/** Creation time encoded in a Discord snowflake (message id). */
+export function snowflakeTime(id: string): number {
+  return Number(BigInt(id) >> 22n) + DISCORD_EPOCH;
+}
+
+/** Channel id from a message link, undefined for anything else. */
+export function linkChannelId(raw: string): string | undefined {
+  return LINK_RE.exec(raw.trim())?.[1];
+}
+
 /**
  * Accepts (wall-clock inputs use `timeZone`, default UTC):
  *   now | today | yesterday
@@ -50,6 +64,8 @@ function fromWallClock(wall: number, tz: string): number {
  *   2026-10-05 [14:30[:00]]       ISO-ish, also with T and Z/±hh:mm
  *   05.10.2026 [14:30]            European
  *   1759622400 | <t:1759622400:f> unix seconds / Discord timestamp
+ *   1424599010423279648            message id (its creation time)
+ *   https://discord.com/channels/<guild|@me>/<channel>/<message>  message link
  */
 export function parseDate(raw: string, opts: ParseOptions = {}): Date | null {
   const now = opts.now ?? Date.now();
@@ -64,7 +80,14 @@ export function parseDate(raw: string, opts: ParseOptions = {}): Date | null {
   if (input === "today") return dayEdge(todayWall);
   if (input === "yesterday") return dayEdge(todayWall - DAY_MS);
 
-  let m = /^(\d{1,4})\s*([mhdw])$/.exec(input);
+  let m = LINK_RE.exec(input);
+  const id = m ? m[2]! : SNOWFLAKE_RE.test(input) ? input : undefined;
+  if (id) {
+    const t = snowflakeTime(id);
+    return t > DISCORD_EPOCH && t <= now + 60_000 ? new Date(t) : null;
+  }
+
+  m = /^(\d{1,4})\s*([mhdw])$/.exec(input);
   if (m) return new Date(now - Number(m[1]) * UNIT_MS[m[2] as keyof typeof UNIT_MS]);
 
   m = /^(?:<t:)?(\d{9,11})(?::[a-z])?>?$/i.exec(input);

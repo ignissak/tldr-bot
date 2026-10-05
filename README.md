@@ -14,6 +14,7 @@ Built with TypeScript, Bun, discord.js, and SQLite (`bun:sqlite`).
 | `/tldr start_date:<date> [end_date] [users] [private]` | Summarize this channel between two dates. `users` takes one or more @mentions. `end_date` defaults to now. |
 
 Dates are read in your `/timezone`. If you haven't set one, `DEFAULT_TIMEZONE` is used (default UTC). Formats: `2026-10-05`, `2026-10-05 14:30`, `2026-10-05T14:30+02:00`, `05.10.2026 14:30`, `6h`, `2d`, `1w`, `today`, `yesterday`, `<t:unix>`.
+You can also use a **message ID** (Developer Mode → Copy Message ID) or a **message link** (Copy Message Link). The summary then starts or ends exactly at that message, and the message itself is included. A link must point to the channel where you run `/tldr`.
 If `end_date` is a date with no time, it means the end of that day.
 
 Settings belong to the **user**, not the server: your key and model follow you everywhere.

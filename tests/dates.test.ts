@@ -54,3 +54,27 @@ describe("parseDate with timeZone", () => {
     expect(isValidTimeZone("Mars/Base")).toBe(false);
   });
 });
+
+describe("message ids and links", () => {
+  // id 1424599010423279648 → (id >> 22) + discord epoch
+  const id = "1424599010423279648";
+  const expected = new Date(Number(BigInt(id) >> 22n) + 1_420_070_400_000).toISOString();
+  test("bare message id resolves to its creation time (zone-independent)", () => {
+    expect(iso(id)).toBe(expected);
+    expect(iso(id, { timeZone: "Europe/Bratislava", endOfDay: true })).toBe(expected);
+  });
+  test("guild + DM message links", () => {
+    expect(iso(`https://discord.com/channels/111111111111111111/222222222222222222/${id}`)).toBe(expected);
+    expect(iso(`https://ptb.discord.com/channels/@me/222222222222222222/${id}`)).toBe(expected);
+  });
+  test("channel id is extracted from links only", async () => {
+    const { linkChannelId } = await import("../src/lib/dates");
+    expect(linkChannelId(`https://discord.com/channels/111111111111111111/222222222222222222/${id}`)).toBe("222222222222222222");
+    expect(linkChannelId(id)).toBeUndefined();
+    expect(linkChannelId("2026-10-05")).toBeUndefined();
+  });
+  test("future ids are rejected", () => {
+    const future = ((BigInt(now + 86_400_000 - 1_420_070_400_000)) << 22n).toString();
+    expect(iso(future)).toBeUndefined();
+  });
+});
