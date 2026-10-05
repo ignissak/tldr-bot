@@ -1,0 +1,27 @@
+services:
+  bot:
+    build: .
+    image: tldr-discord-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_PATH: /app/data/bot.db
+    volumes:
+      - bot-data:/app/data
+    # Hardening: immutable root fs, no extra privileges/capabilities.
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  bot-data:
